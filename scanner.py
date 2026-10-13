@@ -1,8 +1,19 @@
 import cv2
 import zxingcpp
 import numpy as np
+import sys
+import os
+from barcode_router import route_barcode
 
-camera = cv2.VideoCapture(0)
+# Add src to path to import our lookup module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+from lookup_product import lookup_product
+
+camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+# Use fixed focus for barcode scanning
+camera.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+camera.set(cv2.CAP_PROP_FOCUS, 45)
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
@@ -71,12 +82,27 @@ if camera.isOpened():
                 barcode_region = frame[y_min:y_max, x_min:x_max]
 
                 cv2.imshow("Barcode Region", barcode_region)
-
+                print(f"DEBUG: Decoded={result.text!r} | Active={active_barcode!r}")
                 if active_barcode is None:
                     print(result.text)
                     print(result.format)
                     print(result.position)
                     print(polygon)
+                    # Classify the decoded barcode
+                    route = route_barcode(result.text, str(result.format))
+                    print(f"Barcode route: {route}")
+
+                    if route == "homebox_location":
+                        print("Homebox location recognized.")
+                    else:
+                        # Perform product lookup
+                        product = lookup_product(result.text)
+                        if product:
+                            print("Product found:")
+                            for key, value in product.items():
+                                print(f"  {key}: {value}")
+                        else:
+                            print("No product found for barcode: " + result.text)
 
                     active_barcode = result.text
 
